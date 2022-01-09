@@ -43,6 +43,8 @@ def go(args):
     artifact.add_file(args.output_artifact)
     run.log_artifact(artifact)
 
+    run.finish()
+
 
 
 
