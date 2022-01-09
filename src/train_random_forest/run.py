@@ -79,15 +79,15 @@ def go(args):
     ######################################
 
     logger.info("Fitting")
-    sk_pipe.fit(X_train, y_train)
-    pred = sk_pipe.predict(X_val)
+    sk_pipe.fit(X_train[processed_features], y_train)
+    pred = sk_pipe.predict(X_val[processed_features])
 
 
     # Compute r2 and MAE
     logger.info("Scoring")
-    r_squared = sk_pipe.score(X_val, y_val)
+    r_squared = sk_pipe.score(X_val[processed_features], y_val)
 
-    y_pred = sk_pipe.predict(X_val)
+    y_pred = sk_pipe.predict(X_val[processed_features])
     mae = mean_absolute_error(y_val, y_pred)
 
     logger.info(f"Score: {r_squared}")
@@ -104,7 +104,7 @@ def go(args):
     # HINT: use mlflow.sklearn.save_model
     # YOUR CODE HERE
     ######################################
-    signature = infer_signature(X_val, pred)
+    signature = infer_signature(X_val[processed_features], pred)
 
     mlflow.sklearn.save_model(
             sk_pipe,
@@ -124,11 +124,12 @@ def go(args):
     ######################################
 
     artifact = wandb.Artifact(
-        args.export_artifact,
+        args.output_artifact,
         type="model_export",
         description="Random Forest pipeline export",
+        metadata=rf_config
     )
-    artifact.add_dir(args.export_artifact)
+    artifact.add_dir("random_forest_dir")
 
     run.log_artifact(artifact)
 
@@ -145,7 +146,7 @@ def go(args):
     # Now log the variable "mae" under the key "mae".
     # YOUR CODE HERE
     wandb.log({"mae":mae})
-    
+
     ######################################
 
     # Upload to W&B the feture importance visualization
@@ -188,7 +189,7 @@ def get_inference_pipeline(rf_config, max_tfidf_features):
     # 1 - A SimpleImputer(strategy="most_frequent") to impute missing values
     # 2 - A OneHotEncoder() step to encode the variable
     non_ordinal_categorical_preproc = make_pipeline(
-        SimpleImputer(strategy="constant", fill_value=0), OneHotEncoder()
+        SimpleImputer(strategy="most_frequent"), OneHotEncoder()
     )
     ######################################
 
@@ -248,7 +249,11 @@ def get_inference_pipeline(rf_config, max_tfidf_features):
     # ColumnTransformer instance that we saved in the `preprocessor` variable, and a step called "random_forest"
     # with the random forest instance that we just saved in the `random_forest` variable.
     # HINT: Use the explicit Pipeline constructor so you can assign the names to the steps, do not use make_pipeline
-    sk_pipe = make_pipeline(preprocessor,random_Forest)
+    sk_pipe = Pipeline(steps=[
+        ("preprocessor",preprocessor),
+        ("random_forest",random_Forest)
+    ]
+    )
 
     return sk_pipe, processed_features
 
