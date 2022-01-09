@@ -37,13 +37,23 @@ def go(args):
     sk_pipe = mlflow.sklearn.load_model(model_local_path)
 
     print(sk_pipe['preprocessor'].transformers)
-
-    used_columns = list(itertools.chain.from_iterable([x[2] for x in sk_pipe['preprocessor'].transformers]))
+    ordinal_categorical = ["room_type"]
+    non_ordinal_categorical = ["neighbourhood_group"]
+    zero_imputed = [
+        "minimum_nights",
+        "number_of_reviews",
+        "reviews_per_month",
+        "calculated_host_listings_count",
+        "availability_365",
+        "longitude",
+        "latitude"
+    ]    
+    used_columns = ordinal_categorical + non_ordinal_categorical + zero_imputed + ["last_review", "name"]
 
     y_pred = sk_pipe.predict(X_test[used_columns])
 
     logger.info("Scoring")
-    r_squared = sk_pipe.score(X_test, y_test)
+    r_squared = sk_pipe.score(X_test[used_columns], y_test)
 
     mae = mean_absolute_error(y_test, y_pred)
 
