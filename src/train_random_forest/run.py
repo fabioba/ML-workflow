@@ -7,7 +7,7 @@ import logging
 import os
 import shutil
 import matplotlib.pyplot as plt
-
+from mlflow.models import infer_signature
 import mlflow
 import json
 
@@ -78,6 +78,11 @@ def go(args):
     # YOUR CODE HERE
     ######################################
 
+    logger.info("Fitting")
+    sk_pipe.fit(X_train, y_train)
+    pred = sk_pipe.predict(X_val)
+
+
     # Compute r2 and MAE
     logger.info("Scoring")
     r_squared = sk_pipe.score(X_val, y_val)
@@ -99,6 +104,15 @@ def go(args):
     # HINT: use mlflow.sklearn.save_model
     # YOUR CODE HERE
     ######################################
+    signature = infer_signature(X_val, pred)
+
+    mlflow.sklearn.save_model(
+            sk_pipe,
+            "random_forest_dir",
+            serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE,
+            signature=signature,
+            input_example=X_val.iloc[:2],
+            )
 
     ######################################
     # Upload the model we just exported to W&B
@@ -109,6 +123,19 @@ def go(args):
     # YOUR CODE HERE
     ######################################
 
+    artifact = wandb.Artifact(
+        args.export_artifact,
+        type="model_export",
+        description="Random Forest pipeline export",
+    )
+    artifact.add_dir(args.export_artifact)
+
+    run.log_artifact(artifact)
+
+    # Make sure the artifact is uploaded before the temp dir
+    # gets deleted
+    artifact.wait()
+
     # Plot feature importance
     fig_feat_imp = plot_feature_importance(sk_pipe, processed_features)
 
@@ -117,6 +144,8 @@ def go(args):
     run.summary['r2'] = r_squared
     # Now log the variable "mae" under the key "mae".
     # YOUR CODE HERE
+    wandb.log({"mae":mae})
+    
     ######################################
 
     # Upload to W&B the feture importance visualization

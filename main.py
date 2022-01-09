@@ -116,11 +116,8 @@ def go(config: DictConfig):
 
         if "test_regression_model" in active_steps:
 
-            ##################
-            # Implement here #
-            ##################
-
             pass
+
 
 
 if __name__ == "__main__":
